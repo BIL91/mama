@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ProChat - Video Call</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://meet.jit.si/external_api.js"></script>
+    <style>
+        :root {
+            --primary-color: #0084ff;
+            --secondary-color: #f0f2f5;
+            --text-color: #050505;
+            --muted-text: #65676b;
+            --video-call-color: #ff0000;
+            --success-color: #31a24c;
+            --dark-bg: #1a1a1a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--dark-bg);
+            margin: 0;
+            padding: 0;
+            color: white;
+            touch-action: manipulation;
+        }
+        #videoContainer {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+        .video-header {
+            padding: 12px 16px;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .video-header-info {
+            margin-left: 12px;
+            flex: 1;
+            overflow: hidden;
+        }
+        .video-header-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .video-header-status {
+            font-size: 13px;
+            color: var(--muted-text);
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .video-header-status:hover { text-decoration: underline; }
+        .video-area {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-color: #000;
+            overflow: hidden;
+        }
+        #jitsiMeet {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #000;
+        }
+        #localVideoContainer {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            width: 120px;
+            height: 160px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background-color: #000;
+        }
+        #localVideoContainer:hover { transform: scale(1.05); }
+        #localVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-label {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            max-width: calc(100% - 16px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .control-buttons {
+            padding: 12px 16px;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            position: relative;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .control-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            font-size: 24px;
+            transition: all 0.2s ease;
+            color: white;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .control-btn:hover { transform: scale(1.1); }
+        .control-btn:active { transform: scale(0.95); }
+        .start-call-btn { background-color: var(--success-color); }
+        .start-call-btn:hover {
+            background-color: #27923e;
+            box-shadow: 0 0 15px rgba(49, 162, 76, 0.5);
+        }
+        .end-call-btn { background-color: var(--video-call-color); }
+        .end-call-btn:hover {
+            background-color: #cc0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+        }
+        .secondary-btn { background-color: rgba(255, 255, 255, 0.2); }
+        .secondary-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+        .call-quality {
+            position: absolute;
+            top: 70px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 6px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 5;
+        }
+        .quality-indicator { display: flex; gap: 3px; }
+        .quality-bar {
+            width: 3px;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+        .quality-bar.active { background-color: var(--success-color); }
+        .users-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1050;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        .users-modal-content {
+            background-color: #2a2a2a;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            animation: modalFadeIn 0.3s ease;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .users-modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+            color: white;
+        }
+        .users-close-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 15px;
+        }
+        .users-close-btn:hover { background-color: #0066cc; }
+        .users-list {
+            max-height: 50vh;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        .user-item {
+            padding: 12px 15px;
+            font-size: 16px;
+            border-bottom: 1px solid #3a3a3a;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-item:last-child { border-bottom: none; }
+        .user-item-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #3a3a3a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+        .error-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #ff3b30;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            z-index: 1060;
+            display: none;
+            max-width: 80%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .connection-status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ccc;
+        }
+        .status-indicator.connected {
+            background-color: var(--success-color);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(49, 162, 76, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(49, 162, 76, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(49, 162, 76, 0); }
+        }
+        .call-duration {
+            position: absolute;
+            top: 70px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 6px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 5;
+        }
+        .no-call-ui {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        .no-call-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+        .no-call-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .no-call-subtitle {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 30px;
+            max-width: 300px;
+        }
+        @media (max-width: 768px) {
+            .video-header { padding: 10px 12px; }
+            #localVideoContainer { width: 90px; height: 120px; bottom: 70px; right: 10px; }
+            .control-btn { width: 50px; height: 50px; font-size: 20px; }
+            .control-buttons { gap: 12px; padding: 10px 12px; }
+            .call-quality, .call-duration { top: 60px; font-size: 11px; }
+        }
+        @media (max-width: 480px) {
+            #localVideoContainer { width: 80px; height: 100px; bottom: 60px; }
+            .control-btn { width: 48px; height: 48px; }
+            .users-modal-content { width: 95%; padding: 15px; }
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div id="usersModal" class="users-modal" aria-hidden="true" inert>
+        <div class="users-modal-content">
+            <div class="users-modal-title">Active Users</div>
+            <div id="usersList" class="users-list"></div>
+            <button id="usersClose" class="users-close-btn">Close</button>
+        </div>
+    </div>
+    <div id="errorMessage" class="error-message"></div>
+    <div id="videoContainer" class="d-flex">
+        <div class="video-header">
+            <div class="user-avatar" id="userAvatar"></div>
+            <div class="video-header-info">
+                <div class="video-header-name" id="remoteUserName">Secure Video Call</div>
+                <div class="video-header-status" id="onlineStatus" role="button" aria-label="View active users">Connecting...</div>
+            </div>
+        </div>
+        <div class="video-area" id="videoArea">
+            <div id="jitsiMeet"></div>
+            <div id="localVideoContainer">
+                <video id="localVideo" autoplay playsinline muted></video>
+                <div class="video-label" id="localLabel">You</div>
+            </div>
+            <div id="noCallUi" class="no-call-ui">
+                <div class="no-call-icon"><i class="bi bi-camera-video"></i></div>
+                <div class="no-call-title">Start a Video Call</div>
+                <div class="no-call-subtitle">Join the secure video call room</div>
+            </div>
+            <div id="connectionStatus" class="connection-status" style="display: none;">
+                <span class="status-indicator"></span>
+                <span id="statusText">Connecting</span>
+            </div>
+            <div id="callQuality" class="call-quality" style="display: none;">
+                <span>Call quality:</span>
+                <div class="quality-indicator">
+                    <div class="quality-bar"></div>
+                    <div class="quality-bar"></div>
+                    <div class="quality-bar"></div>
+                    <div class="quality-bar"></div>
+                    <div class="quality-bar"></div>
+                </div>
+            </div>
+            <div id="callDuration" class="call-duration" style="display: none;">00:00</div>
+        </div>
+        <div class="control-buttons">
+            <button id="toggleAudio" class="control-btn secondary-btn" title="Mute Audio"><i class="bi bi-mic-fill"></i></button>
+            <button id="toggleVideo" class="control-btn secondary-btn" title="Turn Off Video"><i class="bi bi-camera-video-fill"></i></button>
+            <button id="startCall" class="control-btn start-call-btn" title="Start Call"><i class="bi bi-telephone-fill"></i></button>
+            <button id="endCall" class="control-btn end-call-btn" title="End Call" disabled><i class="bi bi-telephone-x-fill"></i></button>
+            <button id="toggleUsers" class="control-btn secondary-btn" title="Active Users"><i class="bi bi-people-fill"></i></button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const usersModal = document.getElementById('usersModal');
+            const usersList = document.getElementById('usersList');
+            const usersClose = document.getElementById('usersClose');
+            const videoContainer = document.getElementById('videoContainer');
+            const userAvatar = document.getElementById('userAvatar');
+            const onlineStatus = document.getElementById('onlineStatus');
+            const remoteUserName = document.getElementById('remoteUserName');
+            const localVideo = document.getElementById('localVideo');
+            const localLabel = document.getElementById('localLabel');
+            const startCall = document.getElementById('startCall');
+            const endCall = document.getElementById('endCall');
+            const toggleAudio = document.getElementById('toggleAudio');
+            const toggleVideo = document.getElementById('toggleVideo');
+            const toggleUsers = document.getElementById('toggleUsers');
+            const errorMessage = document.getElementById('errorMessage');
+            const noCallUi = document.getElementById('noCallUi');
+            const connectionStatus = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+            const statusIndicator = document.querySelector('.status-indicator');
+            const callQuality = document.getElementById('callQuality');
+            const qualityBars = document.querySelectorAll('.quality-bar');
+            const callDuration = document.getElementById('callDuration');
+
+            const displayName = localStorage.getItem('chatDisplayName') || 'Guest';
+            const userId = localStorage.getItem('chatUserId') || `user_${Math.random().toString(36).substring(2, 10)}`;
+            let jitsiApi = null;
+            let localStream = null;
+            let isAudioMuted = false;
+            let isVideoOff = false;
+            let activeUsers = {};
+            let callStartTime = null;
+            let callQualityInterval = null;
+            let callDurationInterval = null;
+
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                showError('Video calls require HTTPS. Please serve over a secure connection.');
+                console.error('HTTPS required');
+                startCall.disabled = true;
+                return;
+            }
+
+            async function initApp() {
+                try {
+                    setupEventListeners();
+                    videoContainer.style.display = 'flex';
+                    updateUserAvatar(displayName, userAvatar);
+                    localLabel.textContent = displayName;
+                    await checkMediaPermissions();
+                    handleResize();
+                    console.log('App initialized for user:', { userId, displayName });
+                } catch (error) {
+                    console.error('Init app error:', error.message || error);
+                    showError('Failed to initialize: ' + (error.message || 'Unknown error'));
+                }
+            }
+
+            function showError(message) {
+                console.warn('Displaying error:', message);
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+                setTimeout(() => errorMessage.style.display = 'none', 5000);
+            }
+
+            function setupEventListeners() {
+                toggleUsers.addEventListener('click', showUsersModal);
+                usersClose.addEventListener('click', hideUsersModal);
+                startCall.addEventListener('click', startVideoCall);
+                endCall.addEventListener('click', endVideoCall);
+                toggleAudio.addEventListener('click', toggleAudioHandler);
+                toggleVideo.addEventListener('click', toggleVideoHandler);
+                localVideo.addEventListener('click', swapVideoFeeds);
+                window.addEventListener('resize', handleResize);
+                window.addEventListener('orientationchange', handleResize);
+                window.addEventListener('beforeunload', cleanupBeforeUnload);
+            }
+
+            function swapVideoFeeds() {
+                const localContainer = document.getElementById('localVideoContainer');
+                const jitsiContainer = document.getElementById('jitsiMeet');
+                if (localContainer.classList.contains('swapped')) {
+                    localContainer.style.width = '120px';
+                    localContainer.style.height = '160px';
+                    localContainer.style.bottom = '80px';
+                    localContainer.style.right = '20px';
+                    localContainer.style.zIndex = '5';
+                    localContainer.style.position = 'absolute';
+                    jitsiContainer.style.width = '100%';
+                    jitsiContainer.style.height = '100%';
+                    jitsiContainer.style.position = 'relative';
+                    jitsiContainer.style.bottom = '0';
+                    jitsiContainer.style.right = '0';
+                    localContainer.classList.remove('swapped');
+                    jitsiContainer.classList.remove('swapped');
+                } else {
+                    localContainer.style.width = '100%';
+                    localContainer.style.height = '100%';
+                    localContainer.style.bottom = '0';
+                    localContainer.style.right = '0';
+                    localContainer.style.zIndex = '10';
+                    localContainer.style.position = 'relative';
+                    jitsiContainer.style.width = '120px';
+                    jitsiContainer.style.height = '160px';
+                    jitsiContainer.style.position = 'absolute';
+                    jitsiContainer.style.bottom = '80px';
+                    jitsiContainer.style.right = '20px';
+                    localContainer.classList.add('swapped');
+                    jitsiContainer.classList.add('swapped');
+                }
+                console.log('Video feeds swapped');
+            }
+
+            function handleResize() {
+                const localContainer = document.getElementById('localVideoContainer');
+                if (!localContainer.classList.contains('swapped')) {
+                    if (window.innerHeight > window.innerWidth) {
+                        localContainer.style.width = '90px';
+                        localContainer.style.height = '120px';
+                    } else {
+                        localContainer.style.width = '120px';
+                        localContainer.style.height = '90px';
+                    }
+                }
+            }
+
+            async function cleanupBeforeUnload() {
+                try {
+                    await endVideoCall();
+                    console.log('Cleanup before unload complete');
+                } catch (error) {
+                    console.error('Cleanup error:', error.message || error);
+                }
+            }
+
+            function updateUserAvatar(name, element) {
+                if (!name) {
+                    console.warn('No name provided for avatar');
+                    return;
+                }
+                const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+                const hash = Array.from(name).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                const hue = hash % 360;
+                element.textContent = initials;
+                element.style.backgroundColor = `hsl(${hue}, 70%, 50%)`;
+                element.style.color = 'white';
+                console.log('Avatar updated for:', name);
+            }
+
+            async function checkMediaPermissions() {
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                    localVideo.srcObject = localStream;
+                    localVideo.play().catch(error => console.error('Local video play error:', error.message || error));
+                    console.log('Media permissions granted');
+                } catch (error) {
+                    console.warn('Media permissions error:', error.message || error);
+                    showError('Please allow camera and microphone access');
+                }
+            }
+
+            function toggleAudioHandler() {
+                if (!jitsiApi) {
+                    console.warn('No Jitsi API to toggle audio');
+                    return;
+                }
+                isAudioMuted = !isAudioMuted;
+                jitsiApi.executeCommand('toggleAudio');
+                toggleAudio.innerHTML = isAudioMuted ? '<i class="bi bi-mic-mute-fill"></i>' : '<i class="bi bi-mic-fill"></i>';
+                toggleAudio.title = isAudioMuted ? 'Unmute Audio' : 'Mute Audio';
+                toggleAudio.style.backgroundColor = isAudioMuted ? 'var(--video-call-color)' : 'rgba(255, 255, 255, 0.2)';
+                console.log('Audio:', isAudioMuted ? 'muted' : 'unmuted');
+            }
+
+            function toggleVideoHandler() {
+                if (!jitsiApi) {
+                    console.warn('No Jitsi API to toggle video');
+                    return;
+                }
+                isVideoOff = !isVideoOff;
+                jitsiApi.executeCommand('toggleVideo');
+                toggleVideo.innerHTML = isVideoOff ? '<i class="bi bi-camera-video-off-fill"></i>' : '<i class="bi bi-camera-video-fill"></i>';
+                toggleVideo.title = isVideoOff ? 'Turn On Video' : 'Turn Off Video';
+                toggleVideo.style.backgroundColor = isVideoOff ? 'var(--video-call-color)' : 'rgba(255, 255, 255, 0.2)';
+                localVideo.style.backgroundColor = isVideoOff ? 'black' : 'transparent';
+                console.log('Video:', isVideoOff ? 'off' : 'on');
+            }
+
+            function updateCallQuality(score) {
+                qualityBars.forEach((bar, index) => bar.classList.toggle('active', index < score));
+                callQuality.style.display = 'flex';
+                console.log('Call quality updated:', score);
+            }
+
+            function startQualityMonitor() {
+                if (callQualityInterval) clearInterval(callQualityInterval);
+                callQualityInterval = setInterval(() => {
+                    if (!jitsiApi) {
+                        console.log('No Jitsi API for quality monitor');
+                        return;
+                    }
+                    // Simulate quality score based on network conditions
+                    const score = Math.floor(Math.random() * 5) + 1; // Placeholder
+                    updateCallQuality(score);
+                }, 5000);
+            }
+
+            function updateCallDuration() {
+                if (!callStartTime) {
+                    console.log('No call start time');
+                    return;
+                }
+                const now = new Date();
+                const diff = Math.floor((now - callStartTime) / 1000);
+                const minutes = Math.floor(diff / 60).toString().padStart(2, '0');
+                const seconds = (diff % 60).toString().padStart(2, '0');
+                callDuration.textContent = `${minutes}:${seconds}`;
+                callDuration.style.display = 'block';
+                console.log('Call duration:', callDuration.textContent);
+            }
+
+            function startDurationTimer() {
+                if (callDurationInterval) clearInterval(callDurationInterval);
+                callDurationInterval = setInterval(updateCallDuration, 1000);
+            }
+
+            function showUsersModal() {
+                usersModal.style.display = 'flex';
+                usersModal.removeAttribute('inert');
+                usersModal.setAttribute('aria-hidden', 'false');
+                videoContainer.setAttribute('inert', '');
+                videoContainer.setAttribute('aria-hidden', 'true');
+                console.log('Users modal shown');
+            }
+
+            function hideUsersModal() {
+                usersModal.style.display = 'none';
+                usersModal.setAttribute('inert', '');
+                usersModal.setAttribute('aria-hidden', 'true');
+                videoContainer.removeAttribute('inert');
+                videoContainer.setAttribute('aria-hidden', 'false');
+                console.log('Users modal hidden');
+            }
+
+            function updateUsersList(participants) {
+                usersList.innerHTML = '';
+                activeUsers = {};
+                participants.forEach(p => {
+                    if (p.id !== userId) {
+                        activeUsers[p.id] = p.displayName || 'Anonymous';
+                    }
+                });
+                console.log('Active users:', Object.keys(activeUsers));
+                const onlineCount = Object.keys(activeUsers).length;
+                onlineStatus.textContent = onlineCount > 0 ? `${onlineCount} user${onlineCount !== 1 ? 's' : ''} online` : 'No other users online';
+                if (onlineCount === 0) {
+                    const emptyItem = document.createElement('div');
+                    emptyItem.className = 'user-item';
+                    emptyItem.textContent = 'No other active users';
+                    usersList.appendChild(emptyItem);
+                } else {
+                    Object.entries(activeUsers).forEach(([id, name]) => {
+                        const userItem = document.createElement('div');
+                        userItem.className = 'user-item';
+                        const avatar = document.createElement('div');
+                        avatar.className = 'user-item-avatar';
+                        updateUserAvatar(name, avatar);
+                        const nameEl = document.createElement('div');
+                        nameEl.textContent = name;
+                        userItem.appendChild(avatar);
+                        userItem.appendChild(nameEl);
+                        usersList.appendChild(userItem);
+                    });
+                }
+            }
+
+            async function startVideoCall() {
+                try {
+                    console.log('Starting video call:', { userId, roomName: 'SecureProChat977b62e1' });
+                    if (!localStream) {
+                        localStream = await navigator.mediaDevices.getUserMedia({
+                            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+                            video: { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 30 } }
+                        });
+                        localVideo.srcObject = localStream;
+                        localVideo.play().catch(error => console.error('Local video play error:', error.message || error));
+                        console.log('Local stream set:', localStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+                    }
+                    noCallUi.hidden = true;
+
+                    const domain = 'meet.jit.si';
+                    const options = {
+                        roomName: 'MotherVideoChat977b62e1',
+                        width: '100%',
+                        height: '100%',
+                        parentNode: document.querySelector('#jitsiMeet'),
+                        userInfo: { displayName },
+                        configOverwrite: {
+                            prejoinPageEnabled: true, // Waiting room
+                            startWithAudioMuted: false,
+                            startWithVideoMuted: false,
+                            disableDeepLinking: true,
+                            // Note: Password cannot be set in configOverwrite
+                        },
+                        interfaceConfigOverwrite: {
+                            TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup'],
+                            SETTINGS_SECTIONS: ['devices', 'language']
+                        }
+                    };
+                    jitsiApi = new JitsiMeetExternalAPI(domain, options);
+                    console.log('Jitsi API initialized');
+
+                    jitsiApi.addEventListener('videoConferenceJoined', () => {
+                        console.log('Joined video conference');
+                        jitsiApi.executeCommand('password', 'StrongPass123!');
+                        connectionStatus.style.display = 'flex';
+                        statusIndicator.classList.add('connected');
+                        statusText.textContent = 'Connected';
+                        callStartTime = new Date();
+                        startQualityMonitor();
+                        startDurationTimer();
+                        remoteUserName.textContent = 'Secure Video Call';
+                    });
+
+                    jitsiApi.addEventListener('passwordRequired', () => {
+                        console.log('Password required');
+                        jitsiApi.executeCommand('password', 'StrongPass123!');
+                    });
+
+                    jitsiApi.addEventListener('participantJoined', () => {
+                        const participants = jitsiApi.getParticipantsInfo();
+                        updateUsersList(participants);
+                        console.log('Participant joined:', participants);
+                    });
+
+                    jitsiApi.addEventListener('participantLeft', () => {
+                        const participants = jitsiApi.getParticipantsInfo();
+                        updateUsersList(participants);
+                        console.log('Participant left:', participants);
+                    });
+
+                    jitsiApi.addEventListener('readyToClose', () => {
+                        console.log('Call ended by Jitsi');
+                        endVideoCall();
+                    });
+
+                    startCall.disabled = true;
+                    endCall.disabled = false;
+                    console.log('Video call setup complete');
+                } catch (error) {
+                    console.error('Start video call error:', error.message || error);
+                    showError('Failed to start call: ' + (error.message || 'Unknown error'));
+                    if (localStream) {
+                        localStream.getTracks().forEach(track => track.stop());
+                        localStream = null;
+                    }
+                    startCall.disabled = false;
+                    endCall.disabled = true;
+                }
+            }
+
+            async function endVideoCall() {
+                try {
+                    if (localStream) {
+                        localStream.getTracks().forEach(track => track.stop());
+                        localStream = null;
+                    }
+                    if (jitsiApi) {
+                        jitsiApi.dispose();
+                        jitsiApi = null;
+                    }
+                    localVideo.srcObject = null;
+                    startCall.disabled = false;
+                    endCall.disabled = true;
+                    noCallUi.hidden = false;
+                    connectionStatus.style.display = 'none';
+                    callQuality.style.display = 'none';
+                    callDuration.style.display = 'none';
+                    toggleAudio.innerHTML = '<i class="bi bi-mic-fill"></i>';
+                    toggleAudio.title = 'Mute Audio';
+                    toggleAudio.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                    isAudioMuted = false;
+                    toggleVideo.innerHTML = '<i class="bi bi-camera-video-fill"></i>';
+                    toggleVideo.title = 'Turn Off Video';
+                    toggleVideo.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                    isVideoOff = false;
+                    remoteUserName.textContent = 'Secure Video Call';
+                    activeUsers = {};
+                    updateUsersList([]);
+                    if (callQualityInterval) clearInterval(callQualityInterval);
+                    if (callDurationInterval) clearInterval(callDurationInterval);
+                    console.log('Call ended');
+                } catch (error) {
+                    console.error('End call error:', error.message || error);
+                    showError('Failed to end call: ' + (error.message || 'Unknown error'));
+                }
+            }
+
+            initApp();
+        });
+    </script>
+</body>
+</html>
