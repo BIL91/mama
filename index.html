@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ProChat - Public Chat</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -51,7 +51,8 @@
         }
 
         body {
-            height: 100vh;
+            height: 100dvh; /* Use dynamic viewport height for mobile */
+            margin: 0;
             overflow: hidden;
             font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
             background-color: var(--secondary-color);
@@ -60,20 +61,23 @@
         #chatContainer {
             display: none;
             flex-direction: column;
-            height: 100vh;
+            height: 100dvh; /* Ensure full dynamic viewport height */
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .chat-header {
-            padding: 12px 16px;
+            padding: 8px 12px;
             background-color: #fff;
             border-bottom: 1px solid #e4e6eb;
             display: flex;
             align-items: center;
+            z-index: 10;
         }
 
         .user-avatar {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             background-color: #e4e6eb;
             display: flex;
@@ -82,20 +86,22 @@
             font-weight: bold;
             color: #fff;
             cursor: pointer;
+            font-size: 14px;
         }
 
         .chat-header-info {
-            margin-left: 12px;
+            margin-left: 10px;
             flex: 1;
         }
 
         .chat-header-name {
             font-weight: 600;
+            font-size: 16px;
             margin-bottom: 2px;
         }
 
         .chat-header-status {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--muted-text);
             cursor: pointer;
             text-decoration: none;
@@ -108,11 +114,12 @@
 
         .chat-messages {
             flex: 1;
-            padding: 16px;
+            padding: 12px;
             overflow-y: auto;
             background-color: #e5ddd5;
             background-image: url('https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png');
             background-blend-mode: overlay;
+            overscroll-behavior: contain; /* Prevent pull-to-refresh interfering with scroll */
         }
 
         .message-container {
@@ -125,11 +132,12 @@
         }
 
         .message-bubble {
-            max-width: 65%;
+            max-width: 70%;
             padding: 8px 12px;
             border-radius: 18px;
             position: relative;
             word-wrap: break-word;
+            font-size: 14px;
         }
 
         .other-message {
@@ -144,7 +152,7 @@
         }
 
         .message-time {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--muted-text);
             margin-top: 4px;
             display: flex;
@@ -157,34 +165,43 @@
         }
 
         .message-input-container {
-            padding: 12px 16px;
+            padding: 8px 12px;
             background-color: #fff;
             border-top: 1px solid #e4e6eb;
             display: flex;
             align-items: center;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .message-input {
             flex: 1;
             border: none;
             border-radius: 20px;
-            padding: 10px 16px;
+            padding: 8px 12px;
             background-color: #f0f2f5;
             margin: 0 8px;
             resize: none;
-            max-height: 100px;
+            max-height: 80px;
             outline: none;
+            font-size: 14px;
+            line-height: 1.4;
+            overflow-y: auto;
         }
 
         .send-btn, .video-call-btn {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             border: none;
+            font-size: 16px;
         }
 
         .send-btn {
@@ -227,37 +244,37 @@
         .name-modal-content, .users-modal-content {
             background-color: white;
             border-radius: 8px;
-            width: 100%;
-            max-width: 400px;
-            padding: 24px;
+            width: 90%;
+            max-width: 360px;
+            padding: 20px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         }
 
         .name-modal-title, .users-modal-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             text-align: center;
             color: var(--text-color);
         }
 
         .name-input {
             width: 100%;
-            padding: 12px 16px;
+            padding: 10px 12px;
             border: 1px solid #e4e6eb;
             border-radius: 8px;
-            font-size: 16px;
-            margin-bottom: 16px;
+            font-size: 14px;
+            margin-bottom: 12px;
         }
 
         .name-submit-btn, .users-close-btn {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             background-color: var(--primary-color);
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: background-color 0.2s;
@@ -268,33 +285,86 @@
         }
 
         .users-list {
-            max-height: 300px;
+            max-height: 250px;
             overflow-y: auto;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .user-item {
-            padding: 8px 0;
-            font-size: 16px;
+            padding: 6px 0;
+            font-size: 14px;
             border-bottom: 1px solid #e4e6eb;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 576px) {
             .chat-header {
-                padding: 8px 12px;
+                padding: 6px 10px;
             }
 
             .chat-messages {
-                padding: 12px;
+                padding: 10px;
             }
 
             .message-input-container {
-                padding: 8px 12px;
+                padding: 6px 10px;
+            }
+
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+            }
+
+            .chat-header-name {
+                font-size: 14px;
+            }
+
+            .chat-header-status {
+                font-size: 11px;
+            }
+
+            .message-bubble {
+                max-width: 75%;
+                font-size: 13px;
+            }
+
+            .message-time {
+                font-size: 9px;
+            }
+
+            .message-input {
+                padding: 6px 10px;
+                font-size: 13px;
+            }
+
+            .send-btn, .video-call-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+
+            .name-modal-content, .users-modal-content {
+                width: 95%;
+                padding: 16px;
+            }
+
+            .name-modal-title, .users-modal-title {
+                font-size: 16px;
+            }
+
+            .name-input {
+                padding: 8px 10px;
+                font-size: 13px;
+            }
+
+            .name-submit-btn, .users-close-btn {
+                padding: 8px;
+                font-size: 13px;
             }
         }
 
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         ::-webkit-scrollbar-track {
@@ -382,8 +452,17 @@
             localStorage.setItem('chatUserId', userId);
             let lastMessageId = '';
 
+            // Adjust viewport height for mobile
+            function adjustViewportHeight() {
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', `${vh}px`);
+                chatMessages.style.height = `calc(100dvh - ${chatContainer.querySelector('.chat-header').offsetHeight}px - ${chatContainer.querySelector('.message-input-container').offsetHeight}px)`;
+            }
+
             // Initialize the app
             function initApp() {
+                adjustViewportHeight();
+                window.addEventListener('resize', adjustViewportHeight);
                 setupEventListeners();
                 if (displayName) {
                     nameModal.style.display = 'none';
@@ -407,6 +486,12 @@
                 messageInput.addEventListener('input', () => {
                     sendButton.disabled = messageInput.value.trim() === '';
                     sendButton.classList.toggle('active', !sendButton.disabled);
+                    adjustViewportHeight();
+                });
+                messageInput.addEventListener('focus', () => {
+                    setTimeout(() => {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 300);
                 });
                 messageInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -607,7 +692,9 @@
                     messages.forEach(message => displayMessage(message));
                     setTimeout(() => {
                         chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }, 100);
+                   
+
+ }, 100);
                     if (snapshot.docs.length > 0) {
                         lastMessageId = snapshot.docs[0].id;
                     }
